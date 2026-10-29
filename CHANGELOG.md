@@ -6,6 +6,7 @@
 - Add Random Sampler gate length/randomization and optional Jitter/Steps reset inputs.
 - Add four Texture Synthesizer sample-memory slots in the context menu, embedded in patches and presets.
 - Fix the Plaits slope oscillator's moving-breakpoint correction in the eurorack dependency, preventing extreme samples during fast PWM at low pitch.
+- Add Texture Synthesizer 2, based on Beads.
 
 ### 1.5.0 (2020-11-07)
 - Add Streams via fundraiser.

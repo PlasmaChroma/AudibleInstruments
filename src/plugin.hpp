@@ -27,6 +27,7 @@ extern Model* modelMarbles;
 extern Model* modelRipples;
 extern Model* modelShelves;
 extern Model* modelStreams;
+extern Model* modelBeads;
 
 
 template <typename Base>
