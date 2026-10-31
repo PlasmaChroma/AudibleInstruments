@@ -7,6 +7,7 @@
 - Add four Texture Synthesizer sample-memory slots in the context menu, embedded in patches and presets.
 - Fix the Plaits slope oscillator's moving-breakpoint correction in the eurorack dependency, preventing extreme samples during fast PWM at low pitch.
 - Add Texture Synthesizer 2, based on Beads.
+- Add Plaits firmware 1.2 option to Macro Oscillator 2, with its eight new models, navigation, frequency ranges and custom data loading.
 
 ### 1.5.0 (2020-11-07)
 - Add Streams via fundraiser.
