@@ -43,8 +43,8 @@ static const marbles::Scale preset_scales[6] = {
 			{ 0.4167f, 64 },   // F
 			{ 0.5000f, 4 },    // F#
 			{ 0.5833f, 192 },  // G
-			{ 0.6667f, 16 },   // G#
-			{ 0.7500f, 96 },   // A
+			{ 0.6667f, 96 },   // G#
+			{ 0.7500f, 16 },   // A
 			{ 0.8333f, 128 },  // Bb
 			{ 0.9167f, 16 },   // B
 		}
@@ -210,6 +210,10 @@ struct Marbles : Module {
 	int x_scale;
 	int y_divider_index;
 	int x_clock_source_internal;
+	int y_range;
+	float y_spread;
+	float y_bias;
+	float y_steps;
 
 	// Buffers
 	stmlib::GateFlags t_clocks[BLOCK_SIZE] = {};
@@ -275,8 +279,12 @@ struct Marbles : Module {
 		x_range = 1;
 		external = false;
 		x_scale = 0;
-		y_divider_index = 8;
+		y_divider_index = 6;
 		x_clock_source_internal = 0;
+		y_range = 2;
+		y_spread = 0.5f;
+		y_bias = 0.5f;
+		y_steps = 0.f;
 	}
 
 	void onRandomize() override {
@@ -310,6 +318,10 @@ struct Marbles : Module {
 		json_object_set_new(rootJ, "x_scale", json_integer(x_scale));
 		json_object_set_new(rootJ, "y_divider_index", json_integer(y_divider_index));
 		json_object_set_new(rootJ, "x_clock_source_internal", json_integer(x_clock_source_internal));
+		json_object_set_new(rootJ, "y_range", json_integer(y_range));
+		json_object_set_new(rootJ, "y_spread", json_real(y_spread));
+		json_object_set_new(rootJ, "y_bias", json_real(y_bias));
+		json_object_set_new(rootJ, "y_steps", json_real(y_steps));
 
 		return rootJ;
 	}
@@ -354,6 +366,22 @@ struct Marbles : Module {
 		json_t* x_clock_source_internalJ = json_object_get(rootJ, "x_clock_source_internal");
 		if (x_clock_source_internalJ)
 			x_clock_source_internal = json_integer_value(x_clock_source_internalJ);
+
+		json_t* y_rangeJ = json_object_get(rootJ, "y_range");
+		if (y_rangeJ)
+			y_range = json_integer_value(y_rangeJ);
+
+		json_t* y_spreadJ = json_object_get(rootJ, "y_spread");
+		if (y_spreadJ)
+			y_spread = json_number_value(y_spreadJ);
+
+		json_t* y_biasJ = json_object_get(rootJ, "y_bias");
+		if (y_biasJ)
+			y_bias = json_number_value(y_biasJ);
+
+		json_t* y_stepsJ = json_object_get(rootJ, "y_steps");
+		if (y_stepsJ)
+			y_steps = json_number_value(y_stepsJ);
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -504,14 +532,12 @@ struct Marbles : Module {
 
 		marbles::GroupSettings y;
 		y.control_mode = marbles::CONTROL_MODE_IDENTICAL;
-		// TODO
-		y.voltage_range = (marbles::VoltageRange) x_range;
+		y.voltage_range = (marbles::VoltageRange) y_range;
 		y.register_mode = false;
 		y.register_value = 0.0f;
-		// TODO
-		y.spread = x_spread;
-		y.bias = x_bias;
-		y.steps = x_steps;
+		y.spread = y_spread;
+		y.bias = y_bias;
+		y.steps = y_steps;
 		y.deja_vu = 0.0f;
 		y.length = 1;
 		static const marbles::Ratio y_divider_ratios[] = {
@@ -540,6 +566,47 @@ template <typename BASE>
 struct CKD6Light : BASE {
 	CKD6Light() {
 		this->box.size = Vec(22, 22);
+	}
+};
+
+
+// Context menu equivalents of the Y section edit mode knobs
+struct MarblesYQuantity : Quantity {
+	float* value;
+	float defaultValue;
+	std::string label;
+
+	void setValue(float v) override {
+		*value = clamp(v, 0.f, 1.f);
+	}
+	float getValue() override {
+		return *value;
+	}
+	float getDefaultValue() override {
+		return defaultValue;
+	}
+	float getDisplayValue() override {
+		return getValue() * 100.f;
+	}
+	void setDisplayValue(float displayValue) override {
+		setValue(displayValue / 100.f);
+	}
+	std::string getLabel() override {
+		return label;
+	}
+	std::string getUnit() override {
+		return "%";
+	}
+};
+
+
+struct MarblesSlider : ui::Slider {
+	explicit MarblesSlider(Quantity* quantity) {
+		this->quantity = quantity;
+		box.size.x = 200.0;
+	}
+	~MarblesSlider() {
+		delete quantity;
 	}
 };
 
@@ -667,6 +734,29 @@ struct MarblesWidget : ModuleWidget {
 			"1/2",
 			"1",
 		}, &module->y_divider_index));
+
+		menu->addChild(createIndexPtrSubmenuItem("Y range", {
+			"Narrow",
+			"Positive",
+			"Full",
+		}, &module->y_range));
+
+		struct YSetting {
+			float* value;
+			float defaultValue;
+			const char* label;
+		};
+		for (const YSetting& s : {
+			YSetting{&module->y_spread, 0.5f, "Y spread"},
+			YSetting{&module->y_bias, 0.5f, "Y bias"},
+			YSetting{&module->y_steps, 0.f, "Y steps"},
+		}) {
+			MarblesYQuantity* quantity = new MarblesYQuantity;
+			quantity->value = s.value;
+			quantity->defaultValue = s.defaultValue;
+			quantity->label = s.label;
+			menu->addChild(new MarblesSlider(quantity));
+		}
 	}
 };
 
