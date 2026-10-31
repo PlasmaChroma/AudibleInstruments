@@ -4,6 +4,7 @@
 #include "marbles/random/t_generator.h"
 #include "marbles/random/x_y_generator.h"
 #include "marbles/note_filter.h"
+#include "marbles/clock_self_patching_detector.h"
 
 
 static const int BLOCK_SIZE = 5;
@@ -214,6 +215,15 @@ struct Marbles : Module {
 	float y_spread;
 	float y_bias;
 	float y_steps;
+	float t_pulse_width_mean = 0.5f;
+	float t_pulse_width_std = 0.f;
+	bool explicitReset = false;
+	bool tResetPending = false;
+	bool xResetPending = false;
+	dsp::SchmittTrigger tResetTrigger;
+	dsp::SchmittTrigger xResetTrigger;
+	marbles::ClockSelfPatchingDetector selfPatchingDetector[3];
+	marbles::IOBuffer::Block clockHistory = {};
 
 	// Buffers
 	stmlib::GateFlags t_clocks[BLOCK_SIZE] = {};
@@ -285,6 +295,14 @@ struct Marbles : Module {
 		y_spread = 0.5f;
 		y_bias = 0.5f;
 		y_steps = 0.f;
+		t_pulse_width_mean = 0.5f;
+		t_pulse_width_std = 0.f;
+		explicitReset = false;
+		tResetPending = xResetPending = false;
+		tResetTrigger.reset();
+		xResetTrigger.reset();
+		for (int i = 0; i < 3; i++)
+			selfPatchingDetector[i].Init(i);
 	}
 
 	void onRandomize() override {
@@ -322,11 +340,19 @@ struct Marbles : Module {
 		json_object_set_new(rootJ, "y_spread", json_real(y_spread));
 		json_object_set_new(rootJ, "y_bias", json_real(y_bias));
 		json_object_set_new(rootJ, "y_steps", json_real(y_steps));
+		json_object_set_new(rootJ, "t_pulse_width_mean", json_real(t_pulse_width_mean));
+		json_object_set_new(rootJ, "t_pulse_width_std", json_real(t_pulse_width_std));
+		json_object_set_new(rootJ, "explicitReset", json_boolean(explicitReset));
 
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
+		json_t* meanJ = json_object_get(rootJ, "t_pulse_width_mean");
+		t_pulse_width_mean = meanJ ? clamp(float(json_number_value(meanJ)), 0.f, 1.f) : 0.f;
+		json_t* stdJ = json_object_get(rootJ, "t_pulse_width_std");
+		t_pulse_width_std = stdJ ? clamp(float(json_number_value(stdJ)), 0.f, 1.f) : 0.f;
+		explicitReset = json_is_true(json_object_get(rootJ, "explicitReset"));
 		json_t* t_deja_vuJ = json_object_get(rootJ, "t_deja_vu");
 		if (t_deja_vuJ)
 			t_deja_vu = json_boolean_value(t_deja_vuJ);
@@ -416,6 +442,14 @@ struct Marbles : Module {
 		bool x_gate = (inputs[X_CLOCK_INPUT].getVoltage() >= 1.7f);
 		last_xy_clock = stmlib::ExtractGateFlags(last_xy_clock, x_gate);
 		xy_clocks[blockIndex] = last_xy_clock;
+		clockHistory.input[1][blockIndex] = last_xy_clock;
+		for (int i = 0; i < 3; i++)
+			clockHistory.gate_output[i][blockIndex] = outputs[T1_OUTPUT + i].getVoltage() >= 1.7f;
+
+		bool tReset = tResetTrigger.process(inputs[T_JITTER_INPUT].getVoltage(), 0.5f, 1.f);
+		bool xReset = xResetTrigger.process(inputs[X_STEPS_INPUT].getVoltage(), 0.5f, 1.f);
+		tResetPending = explicitReset && (tResetPending || tReset);
+		xResetPending = explicitReset && (xResetPending || xReset);
 
 		// Process block
 		if (++blockIndex >= BLOCK_SIZE) {
@@ -493,21 +527,39 @@ struct Marbles : Module {
 		t_generator.set_rate(t_rate);
 		float t_bias = clamp(params[T_BIAS_PARAM].getValue() + inputs[T_BIAS_INPUT].getVoltage() / 5.f, 0.f, 1.f);
 		t_generator.set_bias(t_bias);
-		float t_jitter = clamp(params[T_JITTER_PARAM].getValue() + inputs[T_JITTER_INPUT].getVoltage() / 5.f, 0.f, 1.f);
+		float t_jitter = clamp(params[T_JITTER_PARAM].getValue() + (explicitReset ? 0.f : inputs[T_JITTER_INPUT].getVoltage() / 5.f), 0.f, 1.f);
 		t_generator.set_jitter(t_jitter);
 		t_generator.set_deja_vu(t_deja_vu ? deja_vu : 0.f);
 		t_generator.set_length(deja_vu_length);
-		// TODO
-		t_generator.set_pulse_width_mean(0.f);
-		t_generator.set_pulse_width_std(0.f);
+		t_generator.set_pulse_width_mean(t_pulse_width_mean);
+		t_generator.set_pulse_width_std(t_pulse_width_std);
 
-		t_generator.Process(t_external_clock, t_clocks, ramps, gates, BLOCK_SIZE);
+		bool tReset = tResetPending;
+		tResetPending = false;
+		t_generator.Process(t_external_clock, &tReset, t_clocks, ramps, gates, BLOCK_SIZE);
 
 		// Set up XYGenerator
 
 		marbles::ClockSource x_clock_source = (marbles::ClockSource) x_clock_source_internal;
-		if (inputs[X_CLOCK_INPUT].isConnected())
+		if (inputs[X_CLOCK_INPUT].isConnected()) {
 			x_clock_source = marbles::CLOCK_SOURCE_EXTERNAL;
+			// Reuse firmware detection instead of querying Rack's engine lock
+			// from the audio thread. As on hardware, this needs several edges.
+			if (explicitReset) {
+				size_t bestScore = 8;
+				for (int i = 0; i < 3; i++) {
+					size_t score = selfPatchingDetector[i].Process(&clockHistory, BLOCK_SIZE);
+					if (score >= bestScore) {
+						x_clock_source = marbles::ClockSource(marbles::CLOCK_SOURCE_INTERNAL_T1 + i);
+						bestScore = score;
+					}
+				}
+			}
+		}
+		if (!explicitReset || !inputs[X_CLOCK_INPUT].isConnected()) {
+			for (int i = 0; i < 3; i++)
+				selfPatchingDetector[i].Init(i);
+		}
 
 		marbles::GroupSettings x;
 		x.control_mode = (marbles::ControlMode) x_mode;
@@ -522,7 +574,7 @@ struct Marbles : Module {
 		x.spread = x_spread;
 		float x_bias = clamp(params[X_BIAS_PARAM].getValue() + inputs[X_BIAS_INPUT].getVoltage() / 5.f, 0.f, 1.f);
 		x.bias = x_bias;
-		float x_steps = clamp(params[X_STEPS_PARAM].getValue() + inputs[X_STEPS_INPUT].getVoltage() / 5.f, 0.f, 1.f);
+		float x_steps = clamp(params[X_STEPS_PARAM].getValue() + (explicitReset ? 0.f : inputs[X_STEPS_INPUT].getVoltage() / 5.f), 0.f, 1.f);
 		x.steps = x_steps;
 		x.deja_vu = x_deja_vu ? deja_vu : 0.f;
 		x.length = deja_vu_length;
@@ -557,7 +609,11 @@ struct Marbles : Module {
 		y.ratio = y_divider_ratios[y_divider_index];
 		y.scale_index = x_scale;
 
-		xy_generator.Process(x_clock_source, x, y, xy_clocks, ramps, voltages, BLOCK_SIZE);
+		bool xReset = xResetPending;
+		xResetPending = false;
+		if (x_clock_source != marbles::CLOCK_SOURCE_EXTERNAL)
+			xReset |= tReset;
+		xy_generator.Process(x_clock_source, x, y, &xReset, xy_clocks, ramps, voltages, BLOCK_SIZE);
 	}
 };
 
@@ -741,12 +797,16 @@ struct MarblesWidget : ModuleWidget {
 			"Full",
 		}, &module->y_range));
 
+		menu->addChild(createBoolPtrMenuItem("Jitter/Steps CV inputs reset T/X", "", &module->explicitReset));
+
 		struct YSetting {
 			float* value;
 			float defaultValue;
 			const char* label;
 		};
 		for (const YSetting& s : {
+			YSetting{&module->t_pulse_width_mean, 0.5f, "T gate length"},
+			YSetting{&module->t_pulse_width_std, 0.f, "T gate length randomness"},
 			YSetting{&module->y_spread, 0.5f, "Y spread"},
 			YSetting{&module->y_bias, 0.5f, "Y bias"},
 			YSetting{&module->y_steps, 0.f, "Y steps"},

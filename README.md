@@ -16,6 +16,13 @@ Based on [Elements](https://mutable-instruments.net/modules/elements), [Manual](
 ### Tidal Modulator
 Based on [Tides](https://mutable-instruments.net/modules/tides), [Manual](https://mutable-instruments.net/modules/tides/manual/)
 
+Connecting CLOCK enables PLL operation; the frequency control selects a ratio with unity at its center. High/Low outputs indicate the ends of attack/release. Older patches retain their original behavior through the **Legacy clock handling** and **Legacy inverted High/Low gates** context-menu options.
+
+### Random Sampler
+Based on [Marbles](https://pichenettes.github.io/mutable-instruments-documentation/modules/marbles/manual/).
+
+The context menu includes independent Y controls and **T gate length** / **T gate length randomness** for t1/t3; t2 stays at 50% duty. **Jitter/Steps CV inputs reset T/X** repurposes those two CV inputs for firmware-style resets while leaving the knobs active. Send reset before the next clock. Internally clocked X follows t reset; self-patched clocks are recognized after several matching edges. Older patches retain their original gate-length setting.
+
 ### Wavetable Oscillator
 Based on [Sheep](https://mutable-instruments.net/modules/tides/firmware/) (Tides alternative firmware)
 
@@ -24,6 +31,10 @@ Based on [Clouds](https://mutable-instruments.net/modules/clouds), [Manual](http
 - edit buttons and lights
 - freeze button
 - right-click context menus to replace menu diving
+
+The **Sample memory** context submenu saves and loads four audio-buffer slots, including quality and playback mode. Saved slots are embedded in patches and presets; loading a slot freezes playback. Save/load requests run at the next audio-processing block, so resume the engine if the menu reports a pending request. The live unsaved buffer is not automatically captured when saving a patch.
+
+New instances detect rising edges at TRIGGER. Older patches retain **Legacy trigger-as-gate behavior**, which can be disabled in the context menu.
 
 ### Meta Modulator
 Based on [Warps](https://mutable-instruments.net/modules/warps), [Manual](https://mutable-instruments.net/modules/warps/manual/)
@@ -36,6 +47,8 @@ Based on [Frames](https://mutable-instruments.net/modules/frames), [Manual](http
 
 ### Multiples
 Based on [Links](https://mutable-instruments.net/modules/links), [Manual](https://mutable-instruments.net/modules/links/manual/)
+
+The 3:1 section averages with a fixed gain of 1/3. Older patches retain **Legacy 3:1 summing (no attenuation)**; disable it in the context menu for hardware behavior.
 
 ### Utilities
 Based on [Kinks](https://mutable-instruments.net/modules/kinks), [Manual](https://mutable-instruments.net/modules/kinks/manual/)
