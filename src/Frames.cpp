@@ -44,6 +44,13 @@ struct Frames : Module {
 	frames::Keyframer keyframer;
 	frames::PolyLfo poly_lfo;
 	bool poly_lfo_mode = false;
+	bool sequencer_mode = false;
+	bool stepArmed = false;
+	int sequencerStep = 0;
+	int previousPosition = -2;
+	int previousNearest = -2;
+	bool canFireStep = false;
+	dsp::PulseGenerator frameStepPulse;
 	uint16_t lastControls[4] = {};
 
 	dsp::SchmittTrigger addTrigger;
@@ -91,7 +98,8 @@ struct Frames : Module {
 		}
 
 		int32_t timestamp = params[FRAME_PARAM].getValue() * 65535.0;
-		int32_t timestampMod = timestamp + params[MODULATION_PARAM].getValue() * inputs[FRAME_INPUT].getVoltage() / 10.0 * 65535.0;
+		float frameModulation = params[MODULATION_PARAM].getValue() * inputs[FRAME_INPUT].getVoltage() / 10.f * 65535.f;
+		int32_t timestampMod = timestamp + frameModulation;
 		timestamp = clamp(timestamp, 0, 65535);
 		timestampMod = clamp(timestampMod, 0, 65535);
 		int16_t nearestIndex = -1;
@@ -136,8 +144,41 @@ struct Frames : Module {
 					keyframer.RemoveKeyframe(nearestTimestamp);
 				}
 			}
+			if (sequencer_mode) {
+				// The hardware's 33k/100k ADC stage and 3.3 V reference,
+				// followed by firmware's doubling, give full scale at 5 V.
+				// Keep the existing animation CV mapping above unchanged.
+				float stepModulation = 2.f * frameModulation;
+				if (stepModulation < 21845.f)
+					stepArmed = true;
+				if (stepModulation > 43690.f && stepArmed) {
+					stepArmed = false;
+					++sequencerStep;
+				}
+				if (sequencerStep >= keyframer.num_keyframes())
+					sequencerStep = 0;
+				if (keyframer.num_keyframes() > 0)
+					timestampMod = keyframer.keyframe(sequencerStep).timestamp;
+			}
 			keyframer.Evaluate(timestampMod);
+
+			// Match frames.cc: crossing a boundary fires once, and a change
+			// of nearest keyframe rearms it (avoids chatter at a boundary).
+			int position = keyframer.position();
+			if (position != previousPosition) {
+				previousPosition = position;
+				if (canFireStep && keyframer.num_keyframes() > 0) {
+					frameStepPulse.trigger(1e-3f);
+					canFireStep = false;
+				}
+			}
+			int nearest = keyframer.nearest_keyframe();
+			if (nearest != previousNearest) {
+				previousNearest = nearest;
+				canFireStep = true;
+			}
 		}
+		outputs[FRAME_STEP_OUTPUT].setVoltage(frameStepPulse.process(args.sampleTime) ? 5.f : 0.f);
 
 		// Get gains
 		float gains[4];
@@ -218,6 +259,7 @@ struct Frames : Module {
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
 		json_object_set_new(rootJ, "polyLfo", json_boolean(poly_lfo_mode));
+		json_object_set_new(rootJ, "sequencer", json_boolean(sequencer_mode));
 
 		json_t* keyframesJ = json_array();
 		for (int i = 0; i < keyframer.num_keyframes(); i++) {
@@ -244,6 +286,8 @@ struct Frames : Module {
 	}
 
 	void dataFromJson(json_t* rootJ) override {
+		sequencer_mode = json_is_true(json_object_get(rootJ, "sequencer"));
+		resetStepState();
 		json_t* polyLfoJ = json_object_get(rootJ, "polyLfo");
 		if (polyLfoJ)
 			poly_lfo_mode = json_boolean_value(polyLfoJ);
@@ -278,8 +322,18 @@ struct Frames : Module {
 		}
 	}
 
+	void resetStepState() {
+		stepArmed = false;
+		sequencerStep = 0;
+		previousPosition = previousNearest = -2;
+		canFireStep = false;
+		frameStepPulse.reset();
+	}
+
 	void onReset() override {
 		poly_lfo_mode = false;
+		sequencer_mode = false;
+		resetStepState();
 		keyframer.Clear();
 		for (int i = 0; i < 4; i++) {
 			keyframer.mutable_settings(i)->easing_curve = frames::EASING_CURVE_LINEAR;
@@ -398,11 +452,15 @@ struct FramesWidget : ModuleWidget {
 		static const std::vector<std::string> modeLabels = {
 			"Keyframer",
 			"Poly LFO",
+			"Sequencer",
 		};
 		for (int i = 0; i < (int) modeLabels.size(); i++) {
 			menu->addChild(createCheckMenuItem(modeLabels[i], "",
-				[=]() {return module->poly_lfo_mode == i;},
-				[=]() {module->poly_lfo_mode = i;}
+				[=]() {return (module->poly_lfo_mode ? 1 : module->sequencer_mode ? 2 : 0) == i;},
+				[=]() {
+					module->poly_lfo_mode = i == 1;
+					module->sequencer_mode = i == 2;
+				}
 			));
 		}
 	}

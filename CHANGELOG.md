@@ -1,6 +1,7 @@
 ### 2.0.0 (in development)
 - Add port labels.
 - Rearrange context menus for clarity and consistency.
+- Restore Meta Modulator level-CV attenuation, Keyframer/Mixer Frame Step pulses and sequencer mode, and the full Segment Generator CV range with firmware output limits. Older patches retain selectable legacy level-CV and CV-range behavior.
 - Restore Multiples' 3:1 averaging, Tidal Modulator gate polarity and clock/PLL handling, and Texture Synthesizer rising-edge triggers. Older patches retain selectable legacy behavior.
 - Add Random Sampler gate length/randomization and optional Jitter/Steps reset inputs.
 - Add four Texture Synthesizer sample-memory slots in the context menu, embedded in patches and presets.

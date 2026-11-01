@@ -39,11 +39,20 @@ New instances detect rising edges at TRIGGER. Older patches retain **Legacy trig
 ### Meta Modulator
 Based on [Warps](https://mutable-instruments.net/modules/warps), [Manual](https://mutable-instruments.net/modules/warps/manual/)
 
+The level knobs attenuate their CV inputs using the firmware's squared response and hardware input scaling. Unpatched inputs use the firmware's internal normalization. Internal oscillator pitch control remains additive. Older patches retain **Legacy additive level CV** in the context menu.
+
 ### Resonator
 Based on [Rings](https://mutable-instruments.net/modules/rings), [Manual](https://mutable-instruments.net/modules/rings/manual/)
 
 ### Keyframer/Mixer
 Based on [Frames](https://mutable-instruments.net/modules/frames), [Manual](https://mutable-instruments.net/modules/frames/manual/)
+
+FRAME STEP emits 5 V, 1 ms pulses when crossing keyframes, with the firmware's rearming behavior. Select **Sequencer** in the context menu to advance through stored frames with pulses on FRAME; turn MODULATION fully clockwise for standard 5 V clocks.
+
+### Segment Generator
+Based on [Stages](https://pichenettes.github.io/mutable-instruments-documentation/modules/stages/manual/).
+
+All modes receive the firmware's extended slider-plus-CV range, including negative voltages for slew/sample-and-hold and additional oscillator/envelope rate control. Outputs saturate at the default firmware DAC limits (approximately +/-8.125 V). Older patches retain **Legacy limited CV range** in the context menu.
 
 ### Multiples
 Based on [Links](https://mutable-instruments.net/modules/links), [Manual](https://mutable-instruments.net/modules/links/manual/)
