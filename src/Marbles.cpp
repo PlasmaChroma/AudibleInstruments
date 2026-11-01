@@ -145,6 +145,13 @@ struct Marbles : Module {
 		EXTERNAL_PARAM,
 		T_JITTER_PARAM,
 		X_STEPS_PARAM,
+		// Append parameters to preserve existing patch and automation IDs.
+		Y_RATE_PARAM,
+		Y_SPREAD_PARAM,
+		Y_BIAS_PARAM,
+		Y_STEPS_PARAM,
+		GATE_BIAS_PARAM,
+		GATE_JITTER_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -209,14 +216,8 @@ struct Marbles : Module {
 	int x_range;
 	bool external;
 	int x_scale;
-	int y_divider_index;
 	int x_clock_source_internal;
 	int y_range;
-	float y_spread;
-	float y_bias;
-	float y_steps;
-	float t_pulse_width_mean = 0.5f;
-	float t_pulse_width_std = 0.f;
 	bool explicitReset = false;
 	bool tResetPending = false;
 	bool xResetPending = false;
@@ -254,6 +255,15 @@ struct Marbles : Module {
 		configButton(EXTERNAL_PARAM, "External processing mode");
 		configParam(T_JITTER_PARAM, 0.0, 1.0, 0.0, "Randomness amount");
 		configParam(X_STEPS_PARAM, 0.0, 1.0, 0.5, "Smoothness");
+		configSwitch(Y_RATE_PARAM, 0.f, 11.f, 6.f, "Y divider ratio",
+			{"1/64", "1/48", "1/32", "1/24", "1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"});
+		configParam(Y_SPREAD_PARAM, 0.f, 1.f, 0.5f, "Y spread", "%", 0.f, 100.f);
+		configParam(Y_BIAS_PARAM, 0.f, 1.f, 0.5f, "Y bias", "%", 0.f, 100.f);
+		configParam(Y_STEPS_PARAM, 0.f, 1.f, 0.f, "Y steps", "%", 0.f, 100.f);
+		configParam(GATE_BIAS_PARAM, 0.f, 1.f, 0.5f, "T gate length", "%", 0.f, 100.f);
+		configParam(GATE_JITTER_PARAM, 0.f, 1.f, 0.f, "T gate length randomness", "%", 0.f, 100.f);
+		for (int i = Y_RATE_PARAM; i < NUM_PARAMS; i++)
+			getParamQuantity(i)->randomizeEnabled = false;
 
 		configInput(T_BIAS_INPUT, "T bias");
 		configInput(X_BIAS_INPUT, "X bias");
@@ -289,14 +299,14 @@ struct Marbles : Module {
 		x_range = 1;
 		external = false;
 		x_scale = 0;
-		y_divider_index = 6;
+		params[Y_RATE_PARAM].setValue(6);
 		x_clock_source_internal = 0;
 		y_range = 2;
-		y_spread = 0.5f;
-		y_bias = 0.5f;
-		y_steps = 0.f;
-		t_pulse_width_mean = 0.5f;
-		t_pulse_width_std = 0.f;
+		params[Y_SPREAD_PARAM].setValue(0.5f);
+		params[Y_BIAS_PARAM].setValue(0.5f);
+		params[Y_STEPS_PARAM].setValue(0.f);
+		params[GATE_BIAS_PARAM].setValue(0.5f);
+		params[GATE_JITTER_PARAM].setValue(0.f);
 		explicitReset = false;
 		tResetPending = xResetPending = false;
 		tResetTrigger.reset();
@@ -320,6 +330,8 @@ struct Marbles : Module {
 		// Set scales
 		for (int i = 0; i < 6; i++) {
 			xy_generator.LoadScale(i, preset_scales[i]);
+			// The shared loader covers X only; Y uses the same selected scale.
+			xy_generator.LoadScale(marbles::kNumXChannels, i, preset_scales[i]);
 		}
 	}
 
@@ -334,24 +346,26 @@ struct Marbles : Module {
 		json_object_set_new(rootJ, "x_range", json_integer(x_range));
 		json_object_set_new(rootJ, "external", json_boolean(external));
 		json_object_set_new(rootJ, "x_scale", json_integer(x_scale));
-		json_object_set_new(rootJ, "y_divider_index", json_integer(y_divider_index));
+		// Retain legacy fields so older builds can read the knob settings.
+		json_object_set_new(rootJ, "y_divider_index", json_integer(clamp(int(std::round(params[Y_RATE_PARAM].getValue())), 0, 11)));
 		json_object_set_new(rootJ, "x_clock_source_internal", json_integer(x_clock_source_internal));
 		json_object_set_new(rootJ, "y_range", json_integer(y_range));
-		json_object_set_new(rootJ, "y_spread", json_real(y_spread));
-		json_object_set_new(rootJ, "y_bias", json_real(y_bias));
-		json_object_set_new(rootJ, "y_steps", json_real(y_steps));
-		json_object_set_new(rootJ, "t_pulse_width_mean", json_real(t_pulse_width_mean));
-		json_object_set_new(rootJ, "t_pulse_width_std", json_real(t_pulse_width_std));
+		json_object_set_new(rootJ, "y_spread", json_real(params[Y_SPREAD_PARAM].getValue()));
+		json_object_set_new(rootJ, "y_bias", json_real(params[Y_BIAS_PARAM].getValue()));
+		json_object_set_new(rootJ, "y_steps", json_real(params[Y_STEPS_PARAM].getValue()));
+		json_object_set_new(rootJ, "t_pulse_width_mean", json_real(params[GATE_BIAS_PARAM].getValue()));
+		json_object_set_new(rootJ, "t_pulse_width_std", json_real(params[GATE_JITTER_PARAM].getValue()));
 		json_object_set_new(rootJ, "explicitReset", json_boolean(explicitReset));
 
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
+		// Migrate settings from patches saved before these became Rack parameters.
 		json_t* meanJ = json_object_get(rootJ, "t_pulse_width_mean");
-		t_pulse_width_mean = meanJ ? clamp(float(json_number_value(meanJ)), 0.f, 1.f) : 0.f;
+		params[GATE_BIAS_PARAM].setValue(meanJ ? clamp(float(json_number_value(meanJ)), 0.f, 1.f) : 0.f);
 		json_t* stdJ = json_object_get(rootJ, "t_pulse_width_std");
-		t_pulse_width_std = stdJ ? clamp(float(json_number_value(stdJ)), 0.f, 1.f) : 0.f;
+		params[GATE_JITTER_PARAM].setValue(stdJ ? clamp(float(json_number_value(stdJ)), 0.f, 1.f) : 0.f);
 		explicitReset = json_is_true(json_object_get(rootJ, "explicitReset"));
 		json_t* t_deja_vuJ = json_object_get(rootJ, "t_deja_vu");
 		if (t_deja_vuJ)
@@ -387,7 +401,7 @@ struct Marbles : Module {
 
 		json_t* y_divider_indexJ = json_object_get(rootJ, "y_divider_index");
 		if (y_divider_indexJ)
-			y_divider_index = json_integer_value(y_divider_indexJ);
+			params[Y_RATE_PARAM].setValue(clamp(float(json_integer_value(y_divider_indexJ)), 0.f, 11.f));
 
 		json_t* x_clock_source_internalJ = json_object_get(rootJ, "x_clock_source_internal");
 		if (x_clock_source_internalJ)
@@ -399,15 +413,15 @@ struct Marbles : Module {
 
 		json_t* y_spreadJ = json_object_get(rootJ, "y_spread");
 		if (y_spreadJ)
-			y_spread = json_number_value(y_spreadJ);
+			params[Y_SPREAD_PARAM].setValue(clamp(float(json_number_value(y_spreadJ)), 0.f, 1.f));
 
 		json_t* y_biasJ = json_object_get(rootJ, "y_bias");
 		if (y_biasJ)
-			y_bias = json_number_value(y_biasJ);
+			params[Y_BIAS_PARAM].setValue(clamp(float(json_number_value(y_biasJ)), 0.f, 1.f));
 
 		json_t* y_stepsJ = json_object_get(rootJ, "y_steps");
 		if (y_stepsJ)
-			y_steps = json_number_value(y_stepsJ);
+			params[Y_STEPS_PARAM].setValue(clamp(float(json_number_value(y_stepsJ)), 0.f, 1.f));
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -531,8 +545,8 @@ struct Marbles : Module {
 		t_generator.set_jitter(t_jitter);
 		t_generator.set_deja_vu(t_deja_vu ? deja_vu : 0.f);
 		t_generator.set_length(deja_vu_length);
-		t_generator.set_pulse_width_mean(t_pulse_width_mean);
-		t_generator.set_pulse_width_std(t_pulse_width_std);
+		t_generator.set_pulse_width_mean(params[GATE_BIAS_PARAM].getValue());
+		t_generator.set_pulse_width_std(params[GATE_JITTER_PARAM].getValue());
 
 		bool tReset = tResetPending;
 		tResetPending = false;
@@ -587,9 +601,9 @@ struct Marbles : Module {
 		y.voltage_range = (marbles::VoltageRange) y_range;
 		y.register_mode = false;
 		y.register_value = 0.0f;
-		y.spread = y_spread;
-		y.bias = y_bias;
-		y.steps = y_steps;
+		y.spread = params[Y_SPREAD_PARAM].getValue();
+		y.bias = params[Y_BIAS_PARAM].getValue();
+		y.steps = params[Y_STEPS_PARAM].getValue();
 		y.deja_vu = 0.0f;
 		y.length = 1;
 		static const marbles::Ratio y_divider_ratios[] = {
@@ -606,7 +620,7 @@ struct Marbles : Module {
 			{ 1, 2 },
 			{ 1, 1 },
 		};
-		y.ratio = y_divider_ratios[y_divider_index];
+		y.ratio = y_divider_ratios[clamp(int(std::round(params[Y_RATE_PARAM].getValue())), 0, 11)];
 		y.scale_index = x_scale;
 
 		bool xReset = xResetPending;
@@ -626,48 +640,9 @@ struct CKD6Light : BASE {
 };
 
 
-// Context menu equivalents of the Y section edit mode knobs
-struct MarblesYQuantity : Quantity {
-	float* value;
-	float defaultValue;
-	std::string label;
-
-	void setValue(float v) override {
-		*value = clamp(v, 0.f, 1.f);
-	}
-	float getValue() override {
-		return *value;
-	}
-	float getDefaultValue() override {
-		return defaultValue;
-	}
-	float getDisplayValue() override {
-		return getValue() * 100.f;
-	}
-	void setDisplayValue(float displayValue) override {
-		setValue(displayValue / 100.f);
-	}
-	std::string getLabel() override {
-		return label;
-	}
-	std::string getUnit() override {
-		return "%";
-	}
-};
-
-
-struct MarblesSlider : ui::Slider {
-	explicit MarblesSlider(Quantity* quantity) {
-		this->quantity = quantity;
-		box.size.x = 200.0;
-	}
-	~MarblesSlider() {
-		delete quantity;
-	}
-};
-
-
 struct MarblesWidget : ModuleWidget {
+	int editMode = 0;
+
 	MarblesWidget(Marbles* module) {
 		setModule(module);
 		setPanel(Svg::load(asset::plugin(pluginInstance, "res/Marbles.svg")));
@@ -692,6 +667,43 @@ struct MarblesWidget : ModuleWidget {
 		addParam(createParamCentered<TL1105>(mm2px(Vec(45.694, 67.294)), module, Marbles::EXTERNAL_PARAM));
 		addParam(createParamCentered<Rogan2PSWhite>(mm2px(Vec(31.544, 73.694)), module, Marbles::T_JITTER_PARAM));
 		addParam(createParamCentered<Rogan2PSWhite>(mm2px(Vec(59.845, 73.694)), module, Marbles::X_STEPS_PARAM));
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan3PSGreen>(mm2px(Vec(23.467, 35.264)), module, Marbles::Y_RATE_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan3PSGreen>(mm2px(Vec(67.945, 35.243)), module, Marbles::Y_SPREAD_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan2PSGreen>(mm2px(Vec(81.844, 58.394)), module, Marbles::Y_BIAS_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan2PSGreen>(mm2px(Vec(59.845, 73.694)), module, Marbles::Y_STEPS_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan2PSRed>(mm2px(Vec(9.545, 58.394)), module, Marbles::GATE_BIAS_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
+		{
+			ParamWidget* knob = createParamCentered<Rogan2PSRed>(mm2px(Vec(31.544, 73.694)), module, Marbles::GATE_JITTER_PARAM);
+			knob->hide();
+			addParam(knob);
+		}
+
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.545, 81.944)), module, Marbles::T_BIAS_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(81.844, 81.944)), module, Marbles::X_BIAS_INPUT));
@@ -727,10 +739,29 @@ struct MarblesWidget : ModuleWidget {
 		addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(78.344, 104.794)), module, Marbles::X3_LIGHT));
 	}
 
+	void setEditMode(int mode) {
+		if (!module)
+			return;
+		editMode = mode;
+		const int normal[] = {Marbles::T_RATE_PARAM, Marbles::X_SPREAD_PARAM,
+			Marbles::X_BIAS_PARAM, Marbles::X_STEPS_PARAM, Marbles::T_BIAS_PARAM, Marbles::T_JITTER_PARAM};
+		const int alternate[] = {Marbles::Y_RATE_PARAM, Marbles::Y_SPREAD_PARAM,
+			Marbles::Y_BIAS_PARAM, Marbles::Y_STEPS_PARAM, Marbles::GATE_BIAS_PARAM, Marbles::GATE_JITTER_PARAM};
+		for (int i = 0; i < 6; i++) {
+			bool editing = editMode == (i < 4 ? 1 : 2);
+			getParam(normal[i])->visible = !editing;
+			getParam(alternate[i])->visible = editing;
+		}
+	}
+
 	void appendContextMenu(Menu* menu) override {
 		Marbles* module = dynamic_cast<Marbles*>(this->module);
 
 		menu->addChild(new MenuSeparator);
+		menu->addChild(createIndexSubmenuItem("Knob edit mode", {"Default", "Y generator", "Gate"},
+			[=]() {return editMode;},
+			[=](int mode) {setEditMode(mode);}
+		));
 
 		menu->addChild(createIndexPtrSubmenuItem("T mode", {
 			"Complementary Bernoulli",
@@ -776,7 +807,7 @@ struct MarblesWidget : ModuleWidget {
 			"T₃ → X₁, X₂, X₃",
 		}, &module->x_clock_source_internal));
 
-		menu->addChild(createIndexPtrSubmenuItem("Y divider ratio", {
+		menu->addChild(createIndexSubmenuItem("Y divider ratio", {
 			"1/64",
 			"1/48",
 			"1/32",
@@ -789,7 +820,10 @@ struct MarblesWidget : ModuleWidget {
 			"1/3",
 			"1/2",
 			"1",
-		}, &module->y_divider_index));
+		},
+			[=]() {return int(std::round(module->params[Marbles::Y_RATE_PARAM].getValue()));},
+			[=](int value) {module->getParamQuantity(Marbles::Y_RATE_PARAM)->setValue(value);}
+		));
 
 		menu->addChild(createIndexPtrSubmenuItem("Y range", {
 			"Narrow",
@@ -799,23 +833,12 @@ struct MarblesWidget : ModuleWidget {
 
 		menu->addChild(createBoolPtrMenuItem("Jitter/Steps CV inputs reset T/X", "", &module->explicitReset));
 
-		struct YSetting {
-			float* value;
-			float defaultValue;
-			const char* label;
-		};
-		for (const YSetting& s : {
-			YSetting{&module->t_pulse_width_mean, 0.5f, "T gate length"},
-			YSetting{&module->t_pulse_width_std, 0.f, "T gate length randomness"},
-			YSetting{&module->y_spread, 0.5f, "Y spread"},
-			YSetting{&module->y_bias, 0.5f, "Y bias"},
-			YSetting{&module->y_steps, 0.f, "Y steps"},
-		}) {
-			MarblesYQuantity* quantity = new MarblesYQuantity;
-			quantity->value = s.value;
-			quantity->defaultValue = s.defaultValue;
-			quantity->label = s.label;
-			menu->addChild(new MarblesSlider(quantity));
+		for (int paramId : {Marbles::GATE_BIAS_PARAM, Marbles::GATE_JITTER_PARAM,
+			Marbles::Y_SPREAD_PARAM, Marbles::Y_BIAS_PARAM, Marbles::Y_STEPS_PARAM}) {
+			ui::Slider* slider = new ui::Slider;
+			slider->quantity = module->getParamQuantity(paramId);
+			slider->box.size.x = 200.f;
+			menu->addChild(slider);
 		}
 	}
 };
