@@ -112,7 +112,7 @@ SOURCES += $(wildcard eurorack/beads/dsp/*.cc)
 
 DISTRIBUTABLES += $(wildcard LICENSE*) res
 
-RACK_DIR ?= ../..
+RACK_DIR ?= ../Rack-SDK
 include $(RACK_DIR)/plugin.mk
 
 # Load Beads through the desktop adapter in every translation unit.

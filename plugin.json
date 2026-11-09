@@ -1,6 +1,6 @@
 {
-  "slug": "AudibleInstruments",
-  "name": "Audible Instruments",
+  "slug": "MutableInstruments",
+  "name": "Mutable Instruments",
   "version": "2.0.0",
   "license": "GPL-3.0-or-later",
   "author": "VCV",
@@ -14,7 +14,7 @@
   "modules": [
     {
       "slug": "Braids",
-      "name": "Macro Oscillator",
+      "name": "Braids",
       "description": "Based on Mutable Instruments Braids",
       "manualUrl": "https://mutable-instruments.net/modules/braids/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-braids-2015",
@@ -25,7 +25,7 @@
     },
     {
       "slug": "Plaits",
-      "name": "Macro Oscillator 2",
+      "name": "Plaits",
       "description": "Based on Mutable Instruments Plaits",
       "manualUrl": "https://mutable-instruments.net/modules/plaits/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-plaits",
@@ -37,7 +37,7 @@
     },
     {
       "slug": "Elements",
-      "name": "Modal Synthesizer",
+      "name": "Elements",
       "description": "Based on Mutable Instruments Elements",
       "manualUrl": "https://mutable-instruments.net/modules/elements/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-elements",
@@ -48,7 +48,7 @@
     },
     {
       "slug": "Tides",
-      "name": "Tidal Modulator",
+      "name": "Tides",
       "description": "Based on Mutable Instruments Tides",
       "manualUrl": "https://mutable-instruments.net/modules/tides1/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-tides-2014-version",
@@ -62,7 +62,7 @@
     },
     {
       "slug": "Tides2",
-      "name": "Tidal Modulator 2",
+      "name": "Tides 2",
       "description": "Based on Mutable Instruments Tides",
       "manualUrl": "https://mutable-instruments.net/modules/tides/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-tides",
@@ -76,7 +76,7 @@
     },
     {
       "slug": "Clouds",
-      "name": "Texture Synthesizer",
+      "name": "Clouds",
       "description": "Based on Mutable Instruments Clouds",
       "manualUrl": "https://mutable-instruments.net/modules/clouds/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-clouds",
@@ -88,7 +88,7 @@
     },
     {
       "slug": "Warps",
-      "name": "Meta Modulator",
+      "name": "Warps",
       "description": "Based on Mutable Instruments Warps",
       "manualUrl": "https://mutable-instruments.net/modules/warps/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-warps",
@@ -100,7 +100,7 @@
     },
     {
       "slug": "Rings",
-      "name": "Resonator",
+      "name": "Rings",
       "description": "Based on Mutable Instruments Rings",
       "manualUrl": "https://mutable-instruments.net/modules/rings/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-rings",
@@ -111,7 +111,7 @@
     },
     {
       "slug": "Links",
-      "name": "Multiples",
+      "name": "Links",
       "description": "Based on Mutable Instruments Links",
       "manualUrl": "https://mutable-instruments.net/modules/links/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-links",
@@ -124,7 +124,7 @@
     },
     {
       "slug": "Kinks",
-      "name": "Utilities",
+      "name": "Kinks",
       "description": "Based on Mutable Instruments Kinks",
       "manualUrl": "https://mutable-instruments.net/modules/kinks/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-kinks",
@@ -137,7 +137,7 @@
     },
     {
       "slug": "Shades",
-      "name": "Mixer",
+      "name": "Shades",
       "description": "Based on Mutable Instruments Shades",
       "manualUrl": "https://mutable-instruments.net/modules/shades/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-shades-",
@@ -148,7 +148,7 @@
     },
     {
       "slug": "Branches",
-      "name": "Bernoulli Gate",
+      "name": "Branches",
       "description": "Based on Mutable Instruments Branches",
       "manualUrl": "https://mutable-instruments.net/modules/branches/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-branches",
@@ -161,7 +161,7 @@
     },
     {
       "slug": "Blinds",
-      "name": "Quad VC-polarizer",
+      "name": "Blinds",
       "description": "Based on Mutable Instruments Blinds",
       "manualUrl": "https://mutable-instruments.net/modules/blinds/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-blinds",
@@ -173,7 +173,7 @@
     },
     {
       "slug": "Veils",
-      "name": "Quad VCA",
+      "name": "Veils",
       "description": "Based on Mutable Instruments Veils",
       "manualUrl": "https://www.mutable-instruments.net/modules/veils/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-veils",
@@ -184,7 +184,7 @@
     },
     {
       "slug": "Frames",
-      "name": "Keyframer/Mixer",
+      "name": "Frames",
       "description": "Based on Mutable Instruments Frames",
       "manualUrl": "https://www.mutable-instruments.net/modules/frames/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-frames",
@@ -198,7 +198,7 @@
     },
     {
       "slug": "Stages",
-      "name": "Segment Generator",
+      "name": "Stages",
       "description": "Based on Mutable Instruments Stages",
       "manualUrl": "https://www.mutable-instruments.net/modules/stages/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-stages",
@@ -210,7 +210,7 @@
     },
     {
       "slug": "Marbles",
-      "name": "Random Sampler",
+      "name": "Marbles",
       "description": "Based on Mutable Instruments Marbles",
       "manualUrl": "https://www.mutable-instruments.net/modules/marbles/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-marbles",
@@ -221,7 +221,7 @@
     },
     {
       "slug": "Ripples",
-      "name": "Liquid Filter",
+      "name": "Ripples",
       "description": "Based on Mutable Instruments Ripples",
       "manualUrl": "https://www.mutable-instruments.net/modules/ripples/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-ripples",
@@ -234,7 +234,7 @@
     },
     {
       "slug": "Shelves",
-      "name": "EQ Filter",
+      "name": "Shelves",
       "description": "Based on Mutable Instruments Shelves",
       "manualUrl": "https://mutable-instruments.net/modules/shelves/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-shelves-2015",
@@ -246,7 +246,7 @@
     },
     {
       "slug": "Streams",
-      "name": "Dual Dynamics Gate",
+      "name": "Streams",
       "description": "Based on Mutable Instruments Streams",
       "tags": [
         "Dynamics",
@@ -256,7 +256,7 @@
     },
     {
       "slug": "Beads",
-      "name": "Texture Synthesizer 2",
+      "name": "Beads",
       "description": "Based on Mutable Instruments Beads",
       "manualUrl": "https://pichenettes.github.io/mutable-instruments-documentation/modules/beads/manual/",
       "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-beads",
