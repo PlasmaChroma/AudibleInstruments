@@ -233,6 +233,19 @@
       ]
     },
     {
+      "slug": "RipplesV2",
+      "name": "Ripples (2020)",
+      "description": "Based on the 2020 revision of Mutable Instruments Ripples",
+      "manualUrl": "https://www.mutable-instruments.net/modules/ripples/manual/",
+      "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-ripples-2020",
+      "tags": [
+        "Filter",
+        "Voltage-controlled amplifier",
+        "Hardware clone",
+        "Polyphonic"
+      ]
+    },
+    {
       "slug": "Shelves",
       "name": "Shelves",
       "description": "Based on Mutable Instruments Shelves",

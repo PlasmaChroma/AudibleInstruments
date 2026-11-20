@@ -25,6 +25,7 @@ extern Model* modelFrames;
 extern Model* modelStages;
 extern Model* modelMarbles;
 extern Model* modelRipples;
+extern Model* modelRipplesV2;
 extern Model* modelShelves;
 extern Model* modelStreams;
 extern Model* modelBeads;

@@ -122,3 +122,6 @@ ifdef ARCH_WIN
 # Firmware's packed 12-bit samples require GCC rather than MS bitfield layout.
 $(BEADS_OBJECTS): CXXFLAGS += -mno-ms-bitfields
 endif
+
+# The imported Ripples economy engine uses C++17 compile-time branches.
+build/src/RipplesV2.cpp.o: CXXFLAGS += -std=c++17
