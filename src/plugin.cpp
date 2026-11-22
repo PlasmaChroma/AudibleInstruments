@@ -25,6 +25,7 @@ void init(rack::Plugin* p) {
 	p->addModel(modelStages);
 	p->addModel(modelRipples);
 	p->addModel(modelRipplesV2);
+	p->addModel(modelPeaks);
 	p->addModel(modelShelves);
 	p->addModel(modelStreams);
 	p->addModel(modelBeads);

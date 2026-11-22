@@ -246,6 +246,21 @@
       ]
     },
     {
+      "slug": "Peaks",
+      "name": "Peaks",
+      "description": "Based on Mutable Instruments Peaks",
+      "manualUrl": "https://mutable-instruments.net/modules/peaks/manual/",
+      "modularGridUrl": "https://www.modulargrid.net/e/mutable-instruments-peaks",
+      "tags": [
+        "Drum",
+        "Envelope generator",
+        "Oscillator",
+        "LFO",
+        "Sequencer",
+        "Hardware clone"
+      ]
+    },
+    {
       "slug": "Shelves",
       "name": "Shelves",
       "description": "Based on Mutable Instruments Shelves",
